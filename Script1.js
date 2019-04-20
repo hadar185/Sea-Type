@@ -8,6 +8,7 @@ var score = 0;
 var streak = 0;
 var longestStreak = 0;
 var backgroundSpeed = 0.2;
+var isGameOver = false;
 
 var boatX = canvas.width / 2;
 var boatY = canvas.height;
@@ -16,6 +17,10 @@ var curShootAngle = 0;
 
 var boatImg = document.createElement("img");
 boatImg.setAttribute("src", "boat.png");
+
+var pauseMenu = document.getElementById("Menu");
+var gameOverMenu = document.getElementById("GameOver");
+var longestStreakText = document.getElementById("LongestStreakText");
 
 var enemies = ["SeaMonster", "Dragon"];
 
@@ -73,7 +78,7 @@ function Circle(x,y,dx,dy,radius,text, textColor,alive) {
                 dx = -dx;
             if (y + radius > innerHeight || y - radius < 0)
                 dy = -dy;*/
-            this.dy = dy;
+            //this.dy = dy;
             if (this.x > canvas.width / 2) {
                 dx = -0.00015 * (canvas.width-this.x);
             }
@@ -94,12 +99,13 @@ function Circle(x,y,dx,dy,radius,text, textColor,alive) {
             }
             else {
                 move = false;
-                streak = 0;
-                c.font = "50px Arial";
-                c.fillText("Game Over!", canvas.width / 4, canvas.height / 2);
-                c.font = "40px Arial";
-                c.fillText("Longest Streak: " + longestStreak, canvas.width / 6, canvas.height / 2 + 50);
-                backgroundSpeed = 0;
+
+                //c.font = "50px Arial";
+                //c.fillText("Game Over!", canvas.width / 4, canvas.height / 2);
+                //c.font = "40px Arial";
+                //c.fillText("Longest Streak: " + longestStreak, canvas.width / 6, canvas.height / 2 + 50);
+                if (!isGameOver)
+                    gameOver();
             }
         }
         /*var counter = 0;
@@ -135,7 +141,7 @@ function pushCircle() {
         var randomNum = Math.random();
         while (randomNum == 1)
             randomNum = Math.random();
-        var randomWordNumber = parseInt(Math.random() * words.length);
+        var randomWordNumber = parseInt(randomNum * words.length);
         var text = words[randomWordNumber].toString();
         var radius = 30;
         var x = Math.random() * (canvas.width - 60 - radius * 2) + radius;
@@ -233,9 +239,11 @@ function Bullet(x, y, i, last) {
             //if (canvas.height - pitagoras + 450  < circleArray[this.i].y) {
             
             if (this.y >= distance * 1.5) {
+                //circleArray[i].changeDy(0);
                 c.drawImage(explosionImg, circleArray[this.i].x, circleArray[this.i].y, canvas.width * 0.15, canvas.width * 0.23);
                 bulletsArray.shift();
-                circleArray[i].changeDy(circleArray[i].startDy);
+                circleArray[i].y -= 3;
+                //circleArray[i].changeDy(circleArray[i].startDy);
                 circleArray[i].stop = false;
                 if (last) {
                     //circleArray.splice(this.i, 1);
@@ -265,8 +273,10 @@ function animate() {
     c.drawImage(boatImg, -canvas.width * 0.075, -100, canvas.width * 0.15, canvas.width * 0.23);
     c.restore();
     //c.drawImage(boatImg, canvas.width / 2- canvas.width * 0.075, canvas.height-150, canvas.width * 0.15, canvas.width * 0.23);
+    c.font = "20px Arial";
     c.fillStyle = 'white';
     c.fillText("Score: " + score, 20, 40);
+    c.fillRect(10, canvas.height-10, streak, 10);
     for (var i = 0; i < circleArray.length; i++) {
         circleArray[i].update();
     }
@@ -279,18 +289,53 @@ function animate() {
 }
 window.requestAnimationFrame(animate);
 
+function pauseGame() {
+    move = !move;
+    if (move) {
+        backgroundSpeed = 0.2;
+        menu.style.display = "none";
+        menu.style.height = 0 + "px";
+        for (var i = 0; i < circleArray.length; i++) {
+            circleArray[i].changeDy(circleArray[i].startDy);
+        }
+    }
+    else {
+        backgroundSpeed = 0;
+        menu.style.display = "block";
+        menu.style.height = window.innerHeight + "px";
+    }
+}
+function gameOver() {
+    if (!isGameOver) {
+        backgroundSpeed = 0;
+        gameOverMenu.style.display = "block";
+        gameOverMenu.style.height = window.innerHeight + "px";
+        longestStreakText.innerHTML = "Longest Streak: " + longestStreak;
+        isGameOver = true;
+        streak = 0;
+    }
+    else {
+        score = 0;
+        monsterIndex = 0;
+        isGameOver = false;
+        move = true;
+        backgroundSpeed = 0.2;
+        gameOverMenu.style.display = "none";
+        gameOverMenu.style.height = 0 + "px";
+        circleArray.length = 0;
+    }
+}
+
 var activeWordIndex = -5;
 var lastTypedLetter = '(';
 
+var menu = document.getElementById("Menu");
 document.addEventListener('keydown', function (event) {
     //alert(circleArray[0].text);
     //alert(String.fromCharCode(event.keyCode));
     if (event.keyCode == 27) {
-        move = !move;
-        if (move)
-            backgroundSpeed = 0.2;
-        else
-            backgroundSpeed = 0;
+        if (!isGameOver)
+            pauseGame();
     }
     if (circleArray.length > 0 && move) {
         if (activeWordIndex < 0) {
@@ -325,7 +370,7 @@ document.addEventListener('keydown', function (event) {
                     }
                     else {
                         bulletsArray.push(new Bullet(canvas.width / 2, canvas.height - 100, activeWordIndex, false));
-                        circleArray[activeWordIndex].changeDy(0);
+                        //circleArray[activeWordIndex].changeDy(0);
                         circleArray[activeWordIndex].stop = true;
                         circleArray[activeWordIndex].text = circleArray[activeWordIndex].text.substr(1);
                     }

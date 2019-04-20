@@ -18,14 +18,42 @@
             background-position: center;
             text-align: center;
         }
+        p {
+            font-family:Gisha;
+        }
+        .menu_button {
+            color: white;
+        }
+        .menu_button:hover {
+            cursor: pointer;
+            color: orange;
+        }
+        .noselect {
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Safari */
+            -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
+        }
     </style>
 </head>
 <body>
-
-    <canvas>
-
-    </canvas>
-
+    <div id="Menu" style="display:none;width:100%;height:400px;background-color:rgba(0,0,0,0.5);margin:0;position:absolute;">
+        <div style="width:200px;height:40%;position:absolute;left:0; right:0;top:0; bottom:0;margin:auto;text-align:center;">
+            <p class="noselect" style="color:white;font-size:60px;margin-top:50px;width:100px;"><strong>Paused</strong></p>
+            <p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="pauseGame()">Resume</p>
+        </div>
+    </div>
+    <div id="GameOver" style="display:none;width:100%;height:400px;background-color:rgba(0,0,0,0.7);margin:0;position:absolute;">
+        <div style="width:300px;height:40%;position:absolute;left:0; right:0;top:0; bottom:0;margin:auto;text-align:center;">
+            <p class="noselect" style="color:white;font-size:60px;margin-top:50px;width:300px;"><strong>Game Over</strong></p>
+            <p class="noselect" style="color:white;font-size:30px;margin-top:50px;width:300px;"><strong id="LongestStreakText">Longest Streak: 0</strong></p>
+            <p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="gameOver()">Retry</p>
+        </div>
+    </div>
+    <canvas style=""></canvas>
     <script src="Script1.js" type="text/javascript"></script>
 </body>
 </html>

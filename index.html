@@ -37,20 +37,43 @@
             user-select: none; /* Non-prefixed version, currently
                                   supported by Chrome and Opera */
         }
+        .shoptitle {
+            color:white;
+            font-family:Gisha;
+        }
+        .container {
+            display: none;
+            width: 100%;
+            height: 400px;
+            background-color: rgba(0,0,0,0.5);
+            margin: 0;
+            position: absolute;
+        }
+
     </style>
 </head>
-<body>
-    <div id="Menu" style="display:none;width:100%;height:400px;background-color:rgba(0,0,0,0.5);margin:0;position:absolute;">
+<body onresize="resizeCanvas()">
+    <!--<embed loop="true" src="sound.wav" hidden="true" type="video/quicktime"></embed>-->
+    <div id="Menu" class="container" style="">
         <div style="width:200px;height:40%;position:absolute;left:0; right:0;top:0; bottom:0;margin:auto;text-align:center;">
             <p class="noselect" style="color:white;font-size:60px;margin-top:50px;width:100px;"><strong>Paused</strong></p>
             <p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="pauseGame()">Resume</p>
+            <p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="openShop()">Shop</p>
         </div>
     </div>
-    <div id="GameOver" style="display:none;width:100%;height:400px;background-color:rgba(0,0,0,0.7);margin:0;position:absolute;">
+    <div id="GameOver" class="container">
         <div style="width:300px;height:40%;position:absolute;left:0; right:0;top:0; bottom:0;margin:auto;text-align:center;">
             <p class="noselect" style="color:white;font-size:60px;margin-top:50px;width:300px;"><strong>Game Over</strong></p>
             <p class="noselect" style="color:white;font-size:30px;margin-top:50px;width:300px;"><strong id="LongestStreakText">Longest Streak: 0</strong></p>
             <p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="gameOver()">Retry</p>
+        </div>
+    </div>
+    <div id="Shop" class="container">
+        <div id="ShopChild" style="width:55%;height:80%;position:absolute;left:0; right:0;top:0; bottom:0;margin:auto;text-align:center;border:1px solid">
+            <p class="noselect" style="color:white;font-size:60px;margin-top:50px;width:100%;"><strong>Shop</strong></p>
+            <p class="menu_button noselect" style="color:white;font-size:50px;margin-top:-150px;width:30%;" onclick="openShop()"><strong>Back</strong></p>
+            <!--<p class="noselect" style="color:white;font-size:30px;margin-top:50px;width:300px;"><strong id="LongestStreakText">Longest Streak: 0</strong></p>-->
+            <!--<p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="gameOver()">Retry</p>-->
         </div>
     </div>
     <canvas style=""></canvas>

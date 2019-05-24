@@ -54,29 +54,47 @@
 </head>
 <body onresize="resizeCanvas()">
     <!--<embed loop="true" src="sound.wav" hidden="true" type="video/quicktime"></embed>-->
+    <!--<img src="large_explosion.gif" />-->
+    <!--<img src="ezgif.com-gif-maker.gif" style="width:10%;position:absolute"/>-->
+    <div id="MainMenu" class="container" style="">
+        <div style="width:280px;height:50%;position:absolute;left:0; right:0;top:0; bottom:0;margin:auto;text-align:center;">
+            <p class="noselect" style="color:white;font-size:60px;margin-top:5%;width:280px;"><strong>SEA TYPE</strong></p>
+            <b style="color:white;font-family:Gisha;">Start from wave </b><input style="text-align:center;width:30px;border-radius:5px;border-style:none;" id="WaveToStartText" type="text" value="1" />
+            <p class="menu_button noselect" style="font-size:35px;margin-top:5%" onclick="play()">Play</p>
+            <p class="menu_button noselect" style="font-size:35px;margin-top:5%" onclick="openShop()">Shop</p>
+            <p class="menu_button noselect" style="font-size:35px;margin-top:5%" onclick="openShop()">Settings</p>
+        </div>
+    </div>
     <div id="Menu" class="container" style="">
         <div style="width:200px;height:40%;position:absolute;left:0; right:0;top:0; bottom:0;margin:auto;text-align:center;">
             <p class="noselect" style="color:white;font-size:60px;margin-top:50px;width:100px;"><strong>Paused</strong></p>
             <p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="pauseGame()">Resume</p>
-            <p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="openShop()">Shop</p>
+            <p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="toMenu()">Menu</p>
         </div>
     </div>
     <div id="GameOver" class="container">
         <div style="width:300px;height:40%;position:absolute;left:0; right:0;top:0; bottom:0;margin:auto;text-align:center;">
             <p class="noselect" style="color:white;font-size:60px;margin-top:50px;width:300px;"><strong>Game Over</strong></p>
             <p class="noselect" style="color:white;font-size:30px;margin-top:50px;width:300px;"><strong id="LongestStreakText">Longest Streak: 0</strong></p>
+            <p class="noselect" style="color:white;font-size:30px;margin-top:50px;width:300px;"><strong id="AddedMoney">+0 </strong><img src="coins.png" style="margin-bottom:-30px" width="80" height="80" /></p>
             <p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="gameOver()">Retry</p>
         </div>
     </div>
     <div id="Shop" class="container">
-        <div id="ShopChild" style="width:55%;height:80%;position:absolute;left:0; right:0;top:0; bottom:0;margin:auto;text-align:center;border:1px solid">
-            <p class="noselect" style="color:white;font-size:60px;margin-top:50px;width:100%;"><strong>Shop</strong></p>
-            <p class="menu_button noselect" style="color:white;font-size:50px;margin-top:-150px;width:30%;" onclick="openShop()"><strong>Back</strong></p>
+        <div id="ShopChild" style="width:55%;height:80%;position:absolute;left:0; right:0;top:0; bottom:0;margin:auto;text-align:center;">
+            <p class="noselect" style="color:white;font-size:30px;width:20%;float:right"><strong id="Money">0 </strong><img src="coins.png" style="margin-bottom:-30px" width="80" height="80" /></p>
+            <p class="noselect" style="color:white;font-size:60px;margin-top:50px;width:50%;margin-left:25%"><strong>Shop</strong></p>
+            <p class="menu_button noselect" style="font-size:50px;margin-top:-150px;width:30%;" onclick="openShop()"><strong>Back</strong></p>
+
             <!--<p class="noselect" style="color:white;font-size:30px;margin-top:50px;width:300px;"><strong id="LongestStreakText">Longest Streak: 0</strong></p>-->
             <!--<p class="menu_button noselect" style="font-size:40px;margin-top:50px" onclick="gameOver()">Retry</p>-->
         </div>
     </div>
     <canvas style=""></canvas>
+    <audio id="audio" loop>
+        <source src="music.mp3" type="audio/mp3">
+        Your browser does not support the audio tag.
+    </audio>
     <script src="Script1.js" type="text/javascript"></script>
 </body>
 </html>

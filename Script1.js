@@ -1,7 +1,7 @@
 // JavaScript source code
 var canvas = document.querySelector('canvas');
-canvas.width = 0.5*window.innerWidth;
-canvas.height = window.innerHeight-6;
+canvas.width = 0.53*window.innerWidth;
+canvas.height = window.innerHeight;
 var c = canvas.getContext('2d');
 
 var score = 0;
@@ -12,6 +12,10 @@ var waveRecord = 1;
 var backgroundSpeed = 0.2;
 var isGameOver = false;
 var money = 0;
+
+var waterPlace = 0;
+var poisoning = false;
+var attacks = 3;
 
 var boatX = canvas.width / 2;
 var boatY = canvas.height;
@@ -24,17 +28,29 @@ var lastTypedLetter = '(';
 
 var shopItems = [];
 var boughtItems = [];
+boughtItems.push(0);
 var currentBoat = "boat.png";
 var currentShootSound = "Laser04";
 var currentHitSound = "Hit";
-var currentEffectName = "large_explosion";
+var currentEffectName = "Explosion01";
 var currentShotImg = "plasma";
+var currentAttack = "";
+var currentFrame = 0;
 
 var boatImg = document.createElement("img");
-boatImg.setAttribute("src", currentBoat);
+boatImg.setAttribute("src", "Boats/"+currentBoat);
+
+var waveImg = document.createElement("img");
+waveImg.setAttribute("src", "Attacks/wave.png");
 
 var pauseMenu = document.getElementById("Menu");
 var mainMenu = document.getElementById("MainMenu");
+var helpMenu = document.getElementById("HelpMenu");
+var isHelpOpen = false
+var settingsMenu = document.getElementById("Settings");
+var volumeSlider = document.getElementById("volume");
+var selectedVolume = volumeSlider.value / 10;
+var isSettingsOpen = false;
 var shopMenu = document.getElementById("Shop");
 var shopChild = document.getElementById("ShopChild");
 var gameOverMenu = document.getElementById("GameOver");
@@ -42,14 +58,21 @@ var longestStreakText = document.getElementById("LongestStreakText");
 var addedMoneyText = document.getElementById("AddedMoney");
 var moneyText = document.getElementById("Money");
 
+
 var waveToStartText = document.getElementById("WaveToStartText");
 
-var enemies = ["Squid", "Monster01", "Dragon", "SeaMonster", "Boss02", "Bomb"];
-var enemyWaves = [1, 1, 3, 5, 1, 6];
+var enemies = ["Squid", "SeaMonster", "Dragon", "Monster02", "Boss02", "SeaBomb", "IceMonster"];
+var enemyWaves = [1, 1, 3, 5, 8, 6, 10];
 
 var isPlayingAudio = false;
 var audio = document.getElementById("audio");
-var explosion = new Audio("Explosion.mp3");
+var explosion = new Audio("Audio/Others/Explosion.mp3");
+explosion.volume = selectedVolume
+
+function changeVolume() {
+    selectedVolume = volumeSlider.value / 10;
+    audio.volume = 0.4 * selectedVolume;
+}
 audio.volume = 0.4;
 function playAudio() {
     audio.play();
@@ -58,29 +81,62 @@ function playAudio() {
 
 backgroundSpeed = 0;
 mainMenu.style.display = "block";
-mainMenu.style.height = window.innerHeight + "px";
-
-/*function angle(cx, cy, ex, ey) {
-    var dy = ey - cy;
-    var dx = ex - cx;
-    var theta = Math.atan2(dy, dx); // range (-PI, PI]
-    theta *= 180 / Math.PI; // rads to degs, range (-180, 180]
-    theta = 360 - theta;
-    if (theta < 0) theta = 360 + theta; // range [0, 360)
-    return theta;
-}*/
 
 var move = false;
 
-function Letter(x, y, pos, randomLetter) {
-    //this.randomLetter = randomLetter;
+function setCookie(name,value) {
+    document.cookie = name + "=" + value + ";path=/";
+}
+
+function getCookie(cname) {
+    var name = cname + "=";
+    var decodedCookie = decodeURIComponent(document.cookie);
+    var ca = decodedCookie.split(';');
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') {
+            c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+    return "";
+}
+
+function checkCookie(name) {
+    var value = getCookie(name);
+    if (value != "") {
+        return value;
+    } else {
+        return 0;
+    }
+}
+if (parseInt(checkCookie("beststreak") == null)) {
+    setCookie("beststreak", 0);
+    setCookie("money", 0);
+    setCookie("bestwave", 1);
+    setCookie("boughtitems", boughtItems.join('|'));
+}
+else {
+    longestStreak = parseInt(checkCookie("beststreak"));
+    money = parseInt(checkCookie("money"));
+    waveRecord = parseInt(checkCookie("bestwave"));
+    if (getCookie("boughtitems").split('|')[0])
+        boughtItems = getCookie("boughtitems").split('|');
+}
+
+if (waveRecord <= 0)
+    waveRecord = 1;
+
+function Letter(x, y, pos, randomLetter, radius) {
     this.letter = randomLetter;
     this.x = x;
     this.y = y;
+    this.radius = radius;
     
     this.draw = function () {
         if (this.letter.length > 0) {
-            //console.log(randomLetter);
             c.fillStyle = 'black';
             c.globalAlpha = 0.7;
             c.fillRect(this.x + pos*30, this.y + 120, 20, 25);
@@ -97,7 +153,16 @@ function Letter(x, y, pos, randomLetter) {
     }
 }
 
-//var letters = [];
+function AllDead() {
+    var dead = true;
+    for (var i = 0; i < circleArray.length; i++) {
+        if (circleArray[i].alive == true) {
+            dead = false;
+        }
+    }
+    return dead;
+}
+
 function Circle(x,y,dx,dy,radius,text, textColor,alive, type) {
     this.x = x;
     this.y = y;
@@ -111,7 +176,7 @@ function Circle(x,y,dx,dy,radius,text, textColor,alive, type) {
     this.startDy = dy;
     this.stop = false;
     var img = document.createElement("img");
-    img.setAttribute("src", enemies[type] + ".png");
+    img.setAttribute("src", "Monsters/"+enemies[type] + ".png");
     this.letters = [];
 
     this.amountOfLetters = 0;
@@ -119,14 +184,11 @@ function Circle(x,y,dx,dy,radius,text, textColor,alive, type) {
 
     this.draw = function () {
         if (this.alive) {
-            // c.globalCompositeOperation = "destination-over";
-            if (type != 4)
-                c.drawImage(img, this.x, this.y, canvas.width * 0.15, canvas.width * 0.15);
-            else {
+            if (type == 4) {
                 c.drawImage(img, this.x, this.y, canvas.width * 0.25, canvas.width * 0.25);
-                
+
                 if (this.amountOfLetters <= 4) {
-                    this.letters.push(new Letter(this.x, this.y, this.amountOfLetters, String.fromCharCode(65 + Math.floor(Math.random() * 26))));
+                    this.letters.push(new Letter(this.x, this.y, this.amountOfLetters, String.fromCharCode(65 + Math.floor(Math.random() * 26)), radius));
                     this.amountOfLetters++;
                 }
                 else {
@@ -136,8 +198,19 @@ function Circle(x,y,dx,dy,radius,text, textColor,alive, type) {
                         this.letters[i].y = this.y;
                     }
                 }
-                
+
             }
+            else if (type == 6) {
+                c.drawImage(img, this.x, this.y, canvas.width * 0.25, canvas.width * 0.25);
+            }
+            else if (type == 5) {
+                c.drawImage(img, this.x, this.y, canvas.width * 0.18, canvas.width * 0.18);
+            }
+            else if (type == 3) {
+                c.drawImage(img, this.x, this.y, canvas.width * 0.20, canvas.width * 0.20);
+            }
+            else
+                c.drawImage(img, this.x, this.y, canvas.width * 0.15, canvas.width * 0.15);
         }
         if (this.text.length > 0) {
 
@@ -156,14 +229,8 @@ function Circle(x,y,dx,dy,radius,text, textColor,alive, type) {
         if ((((this.text.length == 0 || this.text[0] == null) && type != 4) || (this.killedLetters >= 5 && type == 4)) && this.alive) {
             this.alive = false;
             activeWordIndex = -5;
-            console.log("dgsdgsdfg");
         }
         if (move) {
-            /*if (x + radius > innerWidth - 20 || x - radius < 0)
-                dx = -dx;
-            if (y + radius > innerHeight || y - radius < 0)
-                dy = -dy;*/
-            //this.dy = dy;
             if (this.x > canvas.width / 2) {
                 dx = -0.00015 * (canvas.width-this.x);
             }
@@ -181,6 +248,26 @@ function Circle(x,y,dx,dy,radius,text, textColor,alive, type) {
             if (this.y < canvas.height*1) {
                 this.x += dx;
                 this.y += this.dy;
+                if (this.y > canvas.height - waterPlace && poisoning && type != 5) {
+                    if (currentAttack == "poison") {
+                        this.alive = false;
+                        this.text = "";
+                        activeWordIndex = -5;
+                        killedMonsters++;
+                        if ((killedMonsters >= amountOfMonsters || AllDead()) && monsterIndex >= amountOfMonsters) {
+                            curShootAngle = 0;
+                            killedMonsters = amountOfMonsters;
+                            waveEnded = true;
+                            activeWordIndex = -5;
+                            circleArray.length = 0;
+                            waveIndex++;
+                            backgroundSpeed = startBackgroundSpeed * 4;
+                        }
+                    }
+                    else if (currentAttack == "waves") {
+                        this.y -= 3;
+                    }
+                }
             }
             else {
                 if (type == 5) {
@@ -190,11 +277,6 @@ function Circle(x,y,dx,dy,radius,text, textColor,alive, type) {
                 }
                 else {
                     move = false;
-
-                    //c.font = "50px Arial";
-                    //c.fillText("Game Over!", canvas.width / 4, canvas.height / 2);
-                    //c.font = "40px Arial";
-                    //c.fillText("Longest Streak: " + longestStreak, canvas.width / 6, canvas.height / 2 + 50);
                     if (!isGameOver)
                         gameOver();
                 }
@@ -203,20 +285,6 @@ function Circle(x,y,dx,dy,radius,text, textColor,alive, type) {
         if (isGameOver) {
             move = false;
         }
-        /*var counter = 0;
-        for (var i = 0; i < circleArray.length; i++) {
-            if (circleArray[i].alive && circleArray[i] != this && this.alive && !circleArray[i].stop) {
-                counter++;
-                if (this.y < circleArray[i].y + 25 && this.y > circleArray[i].y - 25 && counter == 1) {
-                    if (i != activeWordIndex) {
-                        circleArray[i].changeDy(0);
-                    }
-                }
-                else {
-                    circleArray[i].changeDy(this.startDy);
-                }
-            }
-        }*/
 
         this.draw();
     }
@@ -238,6 +306,7 @@ var waveIndex = 1;
 var dy = 0.5;
 var words = ["woman", "dance", "park", "adopt", "king", "embox", "book", "law", "shaft", "cross", "view", "rape", "dream", "jail", "boy", "add", "virus", "firm", "cable", "chaos", "speed", "hole", "tract", "shot", "store", "hope", "sleep", "paper", "load", "axis", "hold", "smash", "tile", "nap", "nut", "lack", "look", "orbit", "use", "thick", "high", "gas", "dome", "asset", "lip", "bench", "rough", "few", "relax", "pack", "raise", "try", "owl", "skin", "lean", "bird", "chase", "voter", "deal", "point", "rack", "hero", "bad", "fade", "large", "inch", "long", "draft", "sign", "strap", "smell", "deep", "style", "count", "last", "star", "flu", "tent", "cruel", "start", "nose", "fly", "aisle", "disco", "smoke", "base", "grind", "harsh", "work", "layer", "mouse", "run", "live", "radio", "orgy", "drown", "swipe", "night", "slave", "site"];
 var longWords = ["contrary", "fiction", "mutual", "ostracize", "sustain", "hallway", "direction", "script", "constellation", "integration", "dealer", "quality", "refuse", "design", "resource", "twilight", "greeting", "guarantee", "modernize", "coerce", "disturbance", "consider", "pioneer", "violation", "prefer", "joystick", "dragon", "drawing", "compliance", "activity", "environmental", "trivial", "handicap", "communication", "pension", "adoption", "default", "digress", "growth", "confession", "circulation", "feedback", "premature", "uncertainty", "heroin", "peasant", "background", "reason", "clearance", "bulletin", "proclaim", "inappropriate", "responsible", "promote", "calculation", "policy", "institution", "member", "crevice", "cooperate", "symbol", "reduction", "railroad", "friend", "increase", "aquarium", "expand", "particular", "convention", "threshold", "damage", "biscuit", "movement", "requirement", "temple", "retired", "looting", "discuss", "conscience", "courtship", "engine", "reproduce", "terrace", "pasture", "provoke", "midnight", "miracle", "censorship", "outside", "selection", "platform", "horoscope", "consideration", "sticky", "revenge", "research", "explicit", "recession", "linger"];
+var veryLongWords = ["undiscovered", "misinterpret", "deforestation", "reprehensible", "conciliatory", "sociopolitical", "quantitative", "multicolored", "disappointing", "consciousness", "inappropriate", "unchallenged", "experimenter", "compensatory", "slaughterhouse", "reassessment", "operationalize", "determination", "multilateral", "confessional", "misunderstanding", "enthusiastic", "geographical", "redefinition", "transgression", "deterioration", "recrimination", "exhilarating", "participation", "biotechnology", "standardization", "antithetical", "conglomerate", "unpredictability", "industrialization", "conceptualization", "degenerative", "recognizable", "inflationary", "victimization", "inaccessible", "compensation", "northeastern", "unaccustomed", "unproductive", "objectionable", "intersection", "inefficiency", "confectioner", "inconceivable", "administrative", "extinguisher", "undocumented", "osteoporosis", "instrumental", "disintegrate", "contemplation", "unacceptable", "postsecondary", "interruption", "mediterranean", "catastrophic", "implantation", "denomination", "reminiscence", "unintentional", "chiropractor", "sociological", "disenchanted", "condensation", "psychiatrist", "industrialized", "productivity", "statistician", "nutritionist", "rapprochement", "contraception", "unprecedented", "multiplicity", "fertilization", "irreplaceable", "accompaniment", "affectionate", "collaboration", "mythological", "introduction", "contemplation", "questionable", "pathological", "unmistakable", "discriminant", "informational", "heterosexual", "noncompliance", "disintegrate", "journalistic", "straightforward", "epidemiological", "conservative", "schizophrenia"];
 var circleArray = [];
 function pushCircle() {
     if (move) {
@@ -254,11 +323,6 @@ function pushCircle() {
             dx = -2;
         else
             dx = 2;
-        //var dy = (Math.random() - 0.5) * 8;
-        /*if (Math.random() - 0.5 < 0)
-            dy = -2;
-        else
-            dy = 2;*/
         var randomType = Math.random();
         while (randomType == 1 || enemyWaves[parseInt(randomType * enemies.length)] > waveIndex || (parseInt(randomType * enemies.length) == 5 && spawnedBombs >= waveIndex/2)) {
             randomType = Math.random();
@@ -266,50 +330,42 @@ function pushCircle() {
         var randomEnemyIndex = parseInt(randomType * enemies.length);
         if (randomEnemyIndex == 3)
             text = longWords[randomWordNumber].toString();
+        if (randomEnemyIndex == 6)
+            text = veryLongWords[randomWordNumber].toString();
         else if (randomEnemyIndex == 4) {
-            radius = 90;
+            radius = 80;
             text = "";
         }
         else if (randomEnemyIndex == 5) {
-            console.log(killedMonsters);
             spawnedBombs++;
             killedMonsters++;
             if (killedMonsters >= amountOfMonsters && monsterIndex >= amountOfMonsters) {
                 curShootAngle = 0;
                 waveEnded = true;
+                activeWordIndex = -5;
+                circleArray.length = 0;
                 //circleArray.length = 0;
                 waveIndex++;
                 backgroundSpeed = startBackgroundSpeed * 4;
             }
         }
         var x = Math.random() * (canvas.width - 60 - radius * 2) + radius;
-        var y = Math.random() * (0.2 * canvas.height - radius * 2) + radius;
-        circleArray.push(new Circle(x, y, dx, dy, radius, text, 'white', true, randomEnemyIndex));
+        circleArray.push(new Circle(x, 0, dx, dy, radius, text, 'white', true, randomEnemyIndex));
         monsterIndex++;
     }
     if (monsterIndex >= amountOfMonsters) {
         clearInterval(handle);
-        if (killedMonsters >= amountOfMonsters && !waveEnded) {
+        if ((killedMonsters >= amountOfMonsters || AllDead()) && !waveEnded) {
             curShootAngle = 0;
+            killedMonsters = amountOfMonsters;
             waveEnded = true;
-            //circleArray.length = 0;
+            activeWordIndex = -5;
+            circleArray.length = 0;
             waveIndex++;
             backgroundSpeed = startBackgroundSpeed * 4;
         }
     }
 }
-//for (i = 0; i < amountOfMonsters; i++) {
-    
-    //setTimeout(function () { pushCircle() }, 2500 * i);
-    //setTimeout(function () { backgroundSpeed = 3; curShootAngle = 0; }, 2800 * 50);
-    /*else {
-        for (var i = 0; i < circleArray.length; i++) {
-            if (!circleArray[i].alive) {
-                circleArray.splice(i, 1);
-            }
-        }
-    }*/
-//}
 
 function calcDistance(aX, aY, bX, bY) {
     var a = bY - aY;
@@ -318,8 +374,7 @@ function calcDistance(aX, aY, bX, bY) {
     return pitagoras;
 }
 
-function Item(id, name, imgPath, price, shootSound, hitSound, effectName, shotImg) {
-    //this.randomLetter = randomLetter;
+function Item(id, name, imgPath, price, shootSound, hitSound, effectName, shotImg, attack) {
     this.id = id;
     this.name = name;
     this.imgPath = imgPath;
@@ -328,48 +383,21 @@ function Item(id, name, imgPath, price, shootSound, hitSound, effectName, shotIm
     this.hitSound = hitSound;
     this.effectName = effectName;
     this.shotImg = shotImg;
-
-    /*this.draw = function () {
-        if (this.letter.length > 0) {
-            //console.log(randomLetter);
-            c.fillStyle = 'black';
-            c.globalAlpha = 0.7;
-            c.fillRect(this.x + pos * 30, this.y + 120, 20, 25);
-            c.stroke();
-            c.globalCompositeOperation = "source-over";
-        }
-        c.globalAlpha = 1;
-        c.font = "20px Arial";
-        c.fillStyle = "white";
-        c.fillText(this.letter, this.x + 3 + pos * 30, this.y + 140);
-    }
-    this.update = function () {
-        this.draw();
-    }*/
+    this.attack = attack;
 }
 
 function Bullet(x, y, i, last, target) {
     this.x = x;
     this.y = y;
     this.i = i;
-    //var curAngle = angle(this.x, this.y, circleArray[this.i].x, circleArray[this.i].y);
-    var distance = calcDistance(boatX, boatY, target[this.i].x, target[this.i].y);
+    var distance = calcDistance(boatX, boatY, target[this.i].x + target[this.i].radius / 4, target[this.i].y + target[this.i].radius / 4);
     var explosionImg = document.createElement("img");
-    explosionImg.setAttribute("src", currentEffectName + ".gif");
-    //console.log(curAngle);
+    explosionImg.setAttribute("src", currentEffectName + "/" + currentFrame + ".png");
     this.draw = function () {
         
         c.save();
         var img = document.createElement("img");
-        img.setAttribute("src", currentShotImg + ".png");
-        //img.css('transform', 'rotate(' + 100 + 'deg)');
-        //img.setAttribute("style", "transform: rotate(110deg)");
-        //img.style.transform = "rotate(30deg)";
-        //c.translate(circleArray[this.i].x, this.y);
-        //c.translate(innerWidth / 2, innerHeight -100);
-        //c.translate(canvas.width/2, canvas.height*2);
-        //c.setTransform(0, 0, 0, 0, innerWidth / 2, innerHeight-50)
-        //c.rotate(curAngle);
+        img.setAttribute("src", "Shots/"+currentShotImg + ".png");
         if (this.i < target.length) {
             if (target[this.i] != null) {
                 c.save();
@@ -379,48 +407,33 @@ function Bullet(x, y, i, last, target) {
                 c.restore();
             }
         }
-        //    c.drawImage(img, circleArray[this.i].x - 15, this.y);
-
-
-        //var boatAngle = angle(canvas.width / 2, canvas.height, circleArray[this.i].x, circleArray[this.i].y);
-        var boatAngle = Math.atan((target[this.i].x + canvas.width * 0.075 - boatX) / (target[this.i].y + canvas.width * 0.075 - boatY));
-        //console.log(boatAngle);
+        
+        var boatAngle = Math.atan((target[this.i].x + target[this.i].radius / 4 + canvas.width * 0.075 - boatX) / (target[this.i].y + target[this.i].radius / 4 + canvas.width * 0.075 - boatY));
         curShootAngle = -boatAngle;
-
-        //c.restore();
-        //c.translate(this.x, this.y);
 
     }
     this.update = function () {
         this.draw();
-        //x += 1;
-        this.y += 30;
-        //console.log(circleArray[i].y);
+        this.y += 20;
         if (this.i < target.length) {
             if (target[this.i] != null) {
-
-                //console.log(canvas.height - this.y / canvas.height);
-                //var pitagoras = Math.sqrt((this.y) * (this.y) + (circleArray[this.i].x) * (circleArray[this.i].x));
-                //console.log(pitagoras);
-                //if (canvas.height - pitagoras + 450  < circleArray[this.i].y) {
-
+                
                 if (this.y >= distance * 1.5) {
-                    //circleArray[i].changeDy(0);
-                    c.drawImage(explosionImg, target[this.i].x, target[this.i].y, canvas.width * 0.15, canvas.width * 0.23);
+                    c.drawImage(explosionImg, target[this.i].x + target[this.i].radius / 4, target[this.i].y + target[this.i].radius / 4, canvas.width * 0.15, canvas.width * 0.23);
+                    currentFrame++;
+                    if (currentFrame > 5)
+                        currentFrame = 0;
                     bulletsArray.shift();
                     target[i].y -= 3;
-                    //circleArray[i].changeDy(circleArray[i].startDy);
                     target[i].stop = false;
 
-                    var hit = new Audio(currentHitSound+".mp3");
-                    hit.volume = 0.5;
+                    var hit = new Audio("Audio/Hit/"+currentHitSound + ".mp3");
+                    hit.volume = 0.5 * selectedVolume;
                     hit.play();
                     if (last) {
                         if (target == circleArray) {
-                            //circleArray.splice(this.i, 1);
                             target[this.i].text = "";
                             target[this.i].alive = false;
-                            //console.log(target[this.i].type);
                             if (target[this.i].type == 5) {
                                 clearInterval(handle);
                                 explosion.play();
@@ -431,14 +444,15 @@ function Bullet(x, y, i, last, target) {
                                 activeWordIndex = -5;
                             }
                             killedMonsters++;
-                            if (killedMonsters >= amountOfMonsters && monsterIndex >= amountOfMonsters) {
+                            if ((killedMonsters >= amountOfMonsters || AllDead()) && monsterIndex >= amountOfMonsters) {
                                 curShootAngle = 0;
+                                killedMonsters = amountOfMonsters;
                                 waveEnded = true;
-                                //circleArray.length = 0;
+                                activeWordIndex = -5;
+                                circleArray.length = 0;
                                 waveIndex++;
                                 backgroundSpeed = startBackgroundSpeed * 4;
                             }
-                            //curShootAngle = 0;
                         }
                     }
                     
@@ -450,22 +464,16 @@ function Bullet(x, y, i, last, target) {
 
 var bulletsArray = [];
 
-//c.fillRect(100, 100, 100, 100);
 var shoot = false;
 var a = 0;
 var goUp = true;
+var poisonUp = true;
+var dySave = dy;
 
 var body = document.querySelector("body");
 function animate() {
     window.requestAnimationFrame(animate);
     c.clearRect(0, 0, canvas.width, canvas.height);
-    /*c.beginPath();
-    c.moveTo(canvas.width / 2 - 37, canvas.height + boatPos + 50);
-    c.lineTo(canvas.width / 2 - 37, canvas.height);
-    c.moveTo(canvas.width / 2 + 31, canvas.height + boatPos + 50);
-    c.lineTo(canvas.width / 2 + 31, canvas.height);
-    c.stroke();
-    c.globalCompositeOperation = "source-over";*/
 
     for (var i = 0; i < circleArray.length; i++) {
         circleArray[i].update();
@@ -473,22 +481,78 @@ function animate() {
     for (var i = 0; i < bulletsArray.length; i++) {
         bulletsArray[i].update();
     }
+    if ((killedMonsters >= amountOfMonsters || AllDead()) && monsterIndex >= amountOfMonsters && bulletsArray.length == 0 && !waveEnded) {
+        curShootAngle = 0;
+        killedMonsters = amountOfMonsters;
+        waveEnded = true;
+        activeWordIndex = -5;
+        circleArray.length = 0;
+        waveIndex++;
+        backgroundSpeed = startBackgroundSpeed * 4;
+        console.log("hello");
+    }
+    if (poisoning) {
+        if (currentAttack == "poison") {
+            c.globalAlpha = 0.5;
+            c.fillStyle = "#558f1c";
+            c.fillRect(0, canvas.height - waterPlace, canvas.width, canvas.height / 1.5);
+            c.globalAlpha = 1.0;
+
+            if (1.5 * canvas.height - waterPlace > canvas.height && poisonUp) {
+                if (backgroundSpeed < 4)
+                    waterPlace += 7 - backgroundSpeed;
+                else
+                    waterPlace += 7 - 4;
+            }
+            else {
+                poisonUp = false;
+                if (waterPlace > 0) {
+                    waterPlace -= backgroundSpeed * 2;
+                }
+                else {
+                    poisoning = false;
+                    waterPlace = 0;
+                    poisonUp = true;
+                    attacks--;
+                }
+            }
+        }
+        else if (currentAttack == "waves") {
+            c.drawImage(waveImg, 0, canvas.height - waterPlace, canvas.width, 100);
+
+            if (waterPlace/1.13 < canvas.height && poisonUp) {
+                if (backgroundSpeed < 4)
+                    waterPlace += 7 - backgroundSpeed;
+                else
+                    waterPlace += 7 - 4;
+            }
+            else {
+                poisoning = false;
+                waterPlace = 0;
+                poisonUp = true;
+                attacks--;
+            }
+        }
+    }
+    
     c.save();
     c.translate(canvas.width / 2, canvas.height * 0.9);
     c.rotate(curShootAngle);
     
     if (waveEnded) {
-
         curShootAngle = 0;
-        if (boatPos > -canvas.height-100 && goUp) {
+        if (boatPos > -canvas.height-200 && goUp) {
             boatPos += boatPos/50;
             c.font = "100px Gisha";
             c.fillStyle = 'white';
             c.fillText("Wave " + waveIndex, -150, -canvas.height / 2);
+            for (var i = 0; i < circleArray.length; i++) {
+                circleArray[i].dy = 6 * startBackgroundSpeed;
+            }
         }
         else {
             for (var i = 0; i < circleArray.length; i++) {
-                circleArray[i].dy = 20 * startBackgroundSpeed;
+                circleArray[i].dy = 18 * startBackgroundSpeed;
             }
             goUp = false;
             backgroundSpeed = startBackgroundSpeed * 9;
@@ -506,19 +570,25 @@ function animate() {
                 if (waveIndex - 1 > waveRecord) {
                     waveRecord = waveIndex - 1;
                 }
-                dy += 0.05;
+                dy = dySave+0.05;
                 startBackgroundSpeed += 0.05;
                 backgroundSpeed = startBackgroundSpeed;
                 timeBetweenSpawns -= 50;
-                handle = setInterval(function () { pushCircle() }, timeBetweenSpawns);
+
+                if (waveIndex <= 50) {
+                    handle = setInterval(function () { pushCircle() }, timeBetweenSpawns);
+                    dySave = dy;
+                }
                 goUp = true;
             }
         }
     }
 
-    c.drawImage(boatImg, -canvas.width * 0.075, boatPos, canvas.width * 0.15, canvas.width * 0.23);
+    if (boatImg.getAttribute("src") == "Boats/Boat04.png")
+        c.drawImage(boatImg, -canvas.width * 0.1, boatPos - canvas.width * 0.05, canvas.width * 0.2, canvas.width * 0.3);
+    else
+        c.drawImage(boatImg, -canvas.width * 0.075, boatPos, canvas.width * 0.15, canvas.width * 0.23);
     c.restore();
-    //c.drawImage(boatImg, canvas.width / 2- canvas.width * 0.075, canvas.height-150, canvas.width * 0.15, canvas.width * 0.23);
     c.font = "20px Arial";
     c.fillStyle = 'white';
     c.fillText("Score: " + score, 20, 40);
@@ -531,22 +601,26 @@ function animate() {
     c.fillText(streak, 15, canvas.height-2.5);
     c.font = "20px Arial";
     c.fillStyle = 'white';
-    c.fillText(killedMonsters + " / " + amountOfMonsters, canvas.width / 2 -50, 40);
-    c.fillText(monsterIndex + " / " + amountOfMonsters, canvas.width/2+50, 40);
-    c.fillText("Wave " + waveIndex, canvas.width-100, 40);
+    c.fillText(killedMonsters + " / " + amountOfMonsters, canvas.width / 2 -20, 40);
+    c.fillText("Wave " + waveIndex, canvas.width - 100, 40);
+    if (currentAttack == "")
+        c.fillText("No special attack", canvas.width - 200, canvas.height - 20);
+    else {
+        c.fillText(attacks + " attacks", canvas.width - 100, canvas.height - 20);
+        c.fillText("Press ENTER", canvas.width - 150, canvas.height - 50);
+    }
     body.style.backgroundPositionY = a + 'px';
+    
     a += backgroundSpeed;
     
 }
 window.requestAnimationFrame(animate);
 
-//var pause = false;
 function pauseGame() {
     move = !move;
     if (move) {
         backgroundSpeed = startBackgroundSpeed;
         menu.style.display = "none";
-        menu.style.height = 0 + "px";
         for (var i = 0; i < circleArray.length; i++) {
             circleArray[i].changeDy(circleArray[i].startDy);
         }
@@ -554,7 +628,6 @@ function pauseGame() {
     else {
         backgroundSpeed = 0;
         menu.style.display = "block";
-        menu.style.height = window.innerHeight + "px";
     }
 }
 function gameOver() {
@@ -562,13 +635,15 @@ function gameOver() {
         backgroundSpeed = 0;
         startBackgroundSpeed = 0.2;
         gameOverMenu.style.display = "block";
-        gameOverMenu.style.height = window.innerHeight + "px";
         longestStreakText.innerHTML = "Longest Streak: " + longestStreak;
         var moneyToAdd = Math.floor(score / 10);
         addedMoneyText.innerHTML = "+" + moneyToAdd + " ";
         isGameOver = true;
         streak = 0;
         money += moneyToAdd;
+        setCookie("beststreak", longestStreak);
+        setCookie("money", money);
+        setCookie("bestwave", waveRecord);
     }
     else {
         clearInterval(handle);
@@ -578,15 +653,16 @@ function gameOver() {
         move = true;
         dy = 0.5;
         killedMonsters = 0;
+        monstersToAdd = 5;
         waveEnded = false;
         waveIndex = 1;
         spawnedBombs = 0;
+        attacks = 3;
         amountOfMonsters = 5;
         timeBetweenSpawns = 2500;
         handle = setInterval(function () { pushCircle() }, timeBetweenSpawns);
         backgroundSpeed = startBackgroundSpeed;
         gameOverMenu.style.display = "none";
-        gameOverMenu.style.height = 0 + "px";
         circleArray.length = 0;
         curShootAngle = 0;
         activeWordIndex = -5;
@@ -594,7 +670,7 @@ function gameOver() {
     }
 }
 
-shopItems.push(new Item(1, "Boat", "boat.png", 10, "Laser04", "Hit", "large_explosion", "plasma"), new Item(2, "Boat 02", "WoodBoat.png", 50, "Laser04", "Hit", "WXfF", "plasma02"), new Item(3, "Boat 03", "Boat03.png", 100, "Laser04", "Hit", "large_explosion", "plasma"));
+shopItems.push(new Item(1, "Boat", "boat.png", "", "Laser04", "Hit", "Explosion01", "plasma", ""), new Item(2, "Boat 02", "WoodBoat02.png", 50, "Laser01", "Hit02", "Explosion02", "plasma02", "waves"), new Item(3, "Boat 03", "Boat04.png", 100, "Laser02", "Hit03", "Explosion04", "plasma03", "poison"));
 function buyItem(id) {
     boughtItems.push(id);
     for (var i = 0; i < shopItems.length; i++) {
@@ -608,25 +684,22 @@ function buyItem(id) {
             useButton.innerHTML = "Use";
             useButton.className = "shoptitle noselect menu_button";
             money -= shopItems[i].price;
-            //(function (i) {
             useButton.onclick = function () {
                 currentBoat = shopItems[id].imgPath;
-                boatImg.setAttribute("src", shopItems[id].imgPath);
+                boatImg.setAttribute("src", "Boats/"+shopItems[id].imgPath);
                 currentShootSound = shopItems[id].shootSound;
                 currentHitSound = shopItems[id].hitSound;
                 currentEffectName = shopItems[id].effectName;
                 currentShotImg = shopItems[id].shotImg;
+                currentAttack = shopItems[id].attack;
             };
-            //})(i);
             itemDiv.appendChild(useButton);
+            setCookie('money', money);
+            setCookie('boughtitems', boughtItems.join('|'));
             openShop();
             openShop();
-            //alert(shopItems[id].imgPath);
-            //boatImg.setAttribute("src", shopItems[id].imgPath);
         }
     }
-
-    //alert("0");
 }
 
 var isShopOpen = false;
@@ -650,13 +723,12 @@ for (var i = 0; i < shopItems.length; i++) {
             buyItem(i);
         }
     })(i);
-
-    //title.addEventListener('click', function () { alert(i); }, false);
+    
     title.innerHTML = shopItems[i].name;
     var itemImg = document.createElement("img");
     itemImg.ondragstart = function () { return false; };
     itemImg.className = "noselect";
-    itemImg.setAttribute("src", shopItems[i].imgPath);
+    itemImg.setAttribute("src", "Boats/"+shopItems[i].imgPath);
     itemImg.style.width = "50px";
     itemImg.style.height = "80px";
     var price = document.createElement("h4")
@@ -673,17 +745,11 @@ function openShop() {
     if (!isShopOpen) {
         isShopOpen = true;
         shopMenu.style.display = "block";
-        shopMenu.style.height = window.innerHeight + "px";
         shopMenu.ondragstart = function () { return false; };
         menu.style.display = "none";
-        menu.style.height = 0 + "px";
         mainMenu.style.display = "none";
-        mainMenu.style.height = 0 + "px";
         moneyText.innerHTML = money + " ";
         for (var i = 0; i < shopItems.length; i++) {
-            /*var moneyText = document.createElement("h4");
-            moneyText.innerHTML = "Not Enough Money";
-            moneyText.className = "shoptitle noselect";*/
             var bought = false;
             for (var j = 0; j < boughtItems.length; j++) {
                 if (i == boughtItems[j]) {
@@ -698,9 +764,26 @@ function openShop() {
                 if (bought) {
                     itemDiv.style.background = "green";
                     title.className = "shoptitle noselect";
+                    title.onclick = "";
+                    if (itemDiv.lastChild.innerHTML != "Use") {
+                        var useButton = document.createElement("h4");
+                        useButton.innerHTML = "Use";
+                        useButton.className = "shoptitle noselect menu_button";
+                        (function (i) {
+                            useButton.onclick = function () {
+                                currentBoat = shopItems[i].imgPath;
+                                boatImg.setAttribute("src", "Boats/"+shopItems[i].imgPath);
+                                currentShootSound = shopItems[i].shootSound;
+                                currentHitSound = shopItems[i].hitSound;
+                                currentEffectName = shopItems[i].effectName;
+                                currentShotImg = shopItems[i].shotImg;
+                                currentAttack = shopItems[i].attack;
+                            }
+                        }) (i);
+                        itemDiv.appendChild(useButton);
+                    }
                 }
                 title.onclick = "";
-                //itemDiv.appendChild(moneyText);
             }
             else {
                 var itemDiv = document.getElementById("item" + i);
@@ -710,6 +793,24 @@ function openShop() {
                 if (bought) {
                     itemDiv.style.background = "green";
                     title.className = "shoptitle noselect";
+                    title.onclick = "";
+                    if (itemDiv.lastChild.innerHTML != "Use") {
+                        var useButton = document.createElement("h4");
+                        useButton.innerHTML = "Use";
+                        useButton.className = "shoptitle noselect menu_button";
+                        (function (i) {
+                        useButton.onclick = function () {
+                            currentBoat = shopItems[i].imgPath;
+                            boatImg.setAttribute("src", "Boats/"+shopItems[i].imgPath);
+                            currentShootSound = shopItems[i].shootSound;
+                            currentHitSound = shopItems[i].hitSound;
+                            currentEffectName = shopItems[i].effectName;
+                            currentShotImg = shopItems[i].shotImg;
+                            currentAttack = shopItems[i].attack;
+                            }
+                        })(i);
+                        itemDiv.appendChild(useButton);
+                    }
                 }
                 else {
                     (function (i) {
@@ -724,29 +825,33 @@ function openShop() {
     else {
         isShopOpen = false;
         shopMenu.style.display = "none";
-        shopMenu.style.height = "0px";
         menu.style.display = "none";
-        menu.style.height = "0px";
         mainMenu.style.display = "block";
-        mainMenu.style.height = window.innerHeight + "px";
+    }
+}
+
+function openSettings() {
+    if (!isSettingsOpen) {
+        settingsMenu.style.display = "block";
+        settingsMenu.ondragstart = function () { return false; };
+        menu.style.display = "none";
+        mainMenu.style.display = "none";
+        isSettingsOpen = true;
+    }
+    else {
+        settingsMenu.style.display = "none";
+        menu.style.display = "none";
+        mainMenu.style.display = "block";
+        isSettingsOpen = false;
     }
 }
 
 function resizeCanvas() {
-    canvas.width = 0.5 * window.innerWidth;
-    canvas.height = window.innerHeight - 6;
+    canvas.width = 0.53 * window.innerWidth;
+    canvas.height = window.innerHeight;
     boatX = canvas.width / 2;
     boatY = canvas.height;
 }
-
-document.oncontextmenu = function () {
-    //return false;
-}
-
-/*// Active
-window.addEventListener('focus', pauseGame);
-window.addEventListener('blur', pauseGame);*/
-
 
 function play() {
     var waveNumber = 1;
@@ -757,6 +862,8 @@ function play() {
     else if (waveNumber <= 0)
         waveNumber = 1;
     move = true;
+    attacks = 3;
+    waterPlace = 0;
     startBackgroundSpeed = 0.2 + 0.05 * (waveNumber - 1);
     backgroundSpeed = startBackgroundSpeed;
     monstersToAdd = 5 + (waveNumber - 1);
@@ -769,7 +876,6 @@ function play() {
     waveIndex = waveNumber;
     timeBetweenSpawns = 2500 - 50 * (waveNumber - 1);
     mainMenu.style.display = "none";
-    mainMenu.style.height = "0px";
     circleArray.length = 0;
     spawnedBombs = 0;
     isGameOver = false;
@@ -784,9 +890,7 @@ function toMenu() {
     move = false;
     backgroundSpeed = 0;
     menu.style.display = "none";
-    menu.style.height = "0px";
     mainMenu.style.display = "block";
-    mainMenu.style.height = window.innerHeight + "px";
     var moneyToAdd = Math.floor(score / 10);
     isGameOver = false;
     streak = 0;
@@ -801,51 +905,61 @@ function toMenu() {
     waveIndex = 1;
     amountOfMonsters = 5;
     timeBetweenSpawns = 2500;
+    setCookie("beststreak", longestStreak);
+    setCookie("money", money);
+    setCookie("bestwave", waveRecord);
+}
+
+function help() {
+    if (mainMenu.style.display == "none") {
+        isHelpOpen = false;
+        mainMenu.style.display = "block";
+        helpMenu.style.display = "none";
+    }
+    else {
+        isHelpOpen = true;
+        mainMenu.style.display = "none";
+        helpMenu.style.display = "block";
+    }
 }
 
 var menu = document.getElementById("Menu");
 document.addEventListener('keydown', function (event) {
-    //alert(circleArray[0].text);
-    //alert(String.fromCharCode(event.keyCode));
     if (event.keyCode == 27) {
         if (!isGameOver) {
             if (isShopOpen) {
                 openShop();
             }
-            else if (mainMenu.style.display == "none" && !isShopOpen) {
+            else if (mainMenu.style.display == "none" && !isShopOpen && !isSettingsOpen && !isHelpOpen) {
                 pauseGame();
+            }
+            else if (isSettingsOpen) {
+                openSettings();
+            }
+            else if (isHelpOpen) {
+                help();
             }
         }
     }
-
-    /*if (!isPlayingAudio) {
-        playAudio();
+    if (event.keyCode == 13 && !isGameOver && mainMenu.style.display == "none" && !isShopOpen && !isSettingsOpen && move && attacks > 0) {
+        poisoning = true;
     }
-    */
+    
     for (var i = 0; i < circleArray.length; i++) {
         if (circleArray[i].type == 4) {
-            if (circleArray[i].letters.length > 0 && move) {
+            if (circleArray[i].letters.length > 0 && move && circleArray[i].alive == true) {
                 for (var j = 0; j < circleArray[i].letters.length; j++) {
                     if (circleArray[i].letters[j].letter.length > 0) {
                         if (String.fromCharCode(event.keyCode) == circleArray[i].letters[j].letter.toUpperCase()) {
                             lastTypedLetter = event.keyCode;
-                            //activeWordIndex = -5;
                             circleArray[i].letters[j].letter = "";
                             circleArray[i].killedLetters++;
-                            //console.log(circleArray[i].killedLetters);
-                            var laser = new Audio(currentShootSound + ".mp3");
+                            var laser = new Audio("Audio/Shots/"+currentShootSound + ".mp3");
+                            laser.volume = selectedVolume;
                             laser.play();
                             score += 1;
                             if (circleArray[i].killedLetters >= circleArray[i].amountOfLetters) {
                                 bulletsArray.push(new Bullet(canvas.width / 2, canvas.height - 100, i, true, circleArray));
-                                /*circleArray[i].alive = false;
-                                killedMonsters++;
-                                if (killedMonsters >= amountOfMonsters) {
-                                    curShootAngle = 0;
-                                    waveEnded = true;
-                                    waveIndex++;
-                                    backgroundSpeed = 1;
-                                }*/
                             }
                             else {
                                 bulletsArray.push(new Bullet(canvas.width / 2, canvas.height - 100, j, false, circleArray[i].letters));
@@ -855,9 +969,6 @@ document.addEventListener('keydown', function (event) {
                     }
                 }
             }
-            /*else {
-                circleArray[i].alive = false;
-            }*/
         }
     }
     
@@ -876,14 +987,12 @@ document.addEventListener('keydown', function (event) {
         }
         if (activeWordIndex >= 0) {
             if (circleArray[activeWordIndex].alive != false && circleArray[activeWordIndex].text.length > 0) {
-                //var img = document.createElement("img");
-                //img.setAttribute("src", enemies[circleArray[activeWordIndex].type] + ".png");
-                //c.drawImage(img, circleArray[activeWordIndex].x, circleArray[activeWordIndex].y, canvas.width * 0.15, canvas.width * 0.15);
                 if (String.fromCharCode(event.keyCode) == circleArray[activeWordIndex].text[0].toUpperCase()) {
 
                     streak++;
                     shoot = true;
-                    var laser = new Audio(currentShootSound + ".mp3");
+                    var laser = new Audio("Audio/Shots/"+currentShootSound + ".mp3");
+                    laser.volume = selectedVolume;
                     laser.play();
                     if (circleArray[activeWordIndex].text.length <= 1) {
 
@@ -895,11 +1004,10 @@ document.addEventListener('keydown', function (event) {
                         bulletsArray.push(new Bullet(canvas.width / 2, canvas.height - 100, activeWordIndex, true, circleArray));
 
                         circleArray[activeWordIndex].text = circleArray[activeWordIndex].text.substr(1);
-                        //activeWordIndex = -5;
+                        activeWordIndex = -5;
                     }
                     else {
                         bulletsArray.push(new Bullet(canvas.width / 2, canvas.height - 100, activeWordIndex, false, circleArray));
-                        //circleArray[activeWordIndex].changeDy(0);
                         circleArray[activeWordIndex].stop = true;
                         circleArray[activeWordIndex].text = circleArray[activeWordIndex].text.substr(1);
                     }
@@ -931,7 +1039,7 @@ document.addEventListener('keydown', function (event) {
                         }
                     }
                 }
-                else if (event.keyCode == 46) {
+                else if (event.keyCode == 32) {
                     if (activeWordIndex >= 0) {
                         circleArray[activeWordIndex].textColor = 'white';
                         activeWordIndex = -5;
@@ -939,7 +1047,6 @@ document.addEventListener('keydown', function (event) {
                 }
                 else {
                     streak = 0;
-                    //console.log(streak);
                 }
             }
         }

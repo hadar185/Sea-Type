@@ -1,0 +1,90 @@
+﻿canvas {
+    /*border: 1px solid black;*/
+    transform-origin: bottom center;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    margin: 0;
+    width: 100%;
+    background: url("Others/background5.jpg") center center fixed;
+    /*background-repeat: no-repeat;*/
+    background-size: 100%;
+    background-position: center;
+    text-align: center;
+}
+
+p {
+    font-family: Gisha;
+}
+
+.menu_button {
+    color: white;
+}
+
+    .menu_button:hover {
+        cursor: pointer;
+        color: orange;
+    }
+
+.noselect {
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+    -khtml-user-select: none; /* Konqueror HTML */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+    user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
+}
+
+.shoptitle {
+    color: white;
+    font-family: Gisha;
+}
+
+.container {
+    display: none;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    margin: 0;
+    position: absolute;
+}
+
+.slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 15px;
+    border-radius: 5px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+    .slider:hover {
+        opacity: 1;
+    }
+
+    .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: #4CAF50;
+        cursor: pointer;
+    }
+
+    .slider::-moz-range-thumb {
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background: #4CAF50;
+        cursor: pointer;
+    }
